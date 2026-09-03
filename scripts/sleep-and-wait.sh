@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# sleep-and-wait.sh — sleep for a duration and print the target wake time.
+# sleep-and-wait.sh — sleep for a duration, print the target wake time, and
+# print a one-line cheap-wait hint for the calling harness.
 #
 # Hard cap of 12 hours (43200s) so an agent can never sleep itself forever.
 #
@@ -52,6 +53,16 @@ date_iso() {
     return 0
   fi
   date -u -r "$e" +%Y-%m-%dT%H:%M:%SZ
+}
+
+# One-line reminder, printed before the sleep starts, telling the calling
+# harness how to wait for this process with a single tool call instead of a
+# poll loop. It lands in the model's context exactly when it decides how to
+# wait, which survives context compaction.
+cheap_wait_hint() {
+  local secs="$1"
+  local ms=$(( secs * 1000 + 5000 ))
+  echo "sleep-and-wait: wait cheaply — Codex: one write_stdin(chars:\"\", yield_time_ms:${ms}) on this cell, repeated once only if it is still running (ceiling: background_terminal_max_timeout, default 300000; set 3600000 for one-call waits); Claude Code: background task, act on re-invocation; other harnesses: foreground chunks. One wait call per interval."
 }
 
 # Cancellable sleep: background `sleep`, wait on it, kill the child on signal.
@@ -112,12 +123,14 @@ main() {
 
   if [[ "$chunk" -eq 0 ]] || [[ "$total" -le "$chunk" ]]; then
     echo "sleep-and-wait: sleeping ${total}s until $(date_iso "$wake")"
+    cheap_wait_hint "$total"
     sleep_for "$total"
     exit 0
   fi
 
   local remain=$(( total - chunk ))
   echo "sleep-and-wait: sleeping ${chunk}s of ${total}s; ${remain}s remain (target $(date_iso "$wake"))"
+  cheap_wait_hint "$chunk"
   sleep_for "$chunk"
   exit 3
 }
