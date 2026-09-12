@@ -28,17 +28,24 @@ bash "$SKILL_DIR/scripts/sleep-and-wait.sh" 10m
 A sleep costs model turns only when the harness returns control before the
 sleep ends. Pick the mechanism that returns control once:
 
-1. **Codex (unified exec / code mode).** The first `exec_command` yield is
-   capped at 30 s, so the helper always becomes a background cell. Launch with
-   `--chunk 0`, then make ONE `write_stdin` call on that cell with empty
-   `chars` and `yield_time_ms` set to the remaining sleep plus 5 000 ms. Codex
-   blocks that single call for up to `background_terminal_max_timeout`
-   (default 300 000 ms). If the cell is still running when the call returns,
-   repeat the same call once for the remainder. A 10-minute sleep is 2 turns
-   at the 5-minute default and 1 turn once the ceiling is raised. `wait` on the
-   cell follows the same rule. To wait up to an hour in one call, set
-   `background_terminal_max_timeout = 3600000` in Codex `config.toml` — the
-   value Codex's own built-in awaiter agent uses.
+1. **Codex (code mode).** For a genuinely parked graph, prefer the native
+   `clock.sleep` idle tool: it is direct-model-only, bypasses the code-mode
+   cell, takes a `duration_ms` up to 12 h, and wakes on timer expiry or new
+   input — one call, one turn. Enable it with `[features.sleep_tool] enabled =
+   true, mode = "always_on"`.
+   To wait on a running cell instead, launch the helper with `--chunk 0`, then
+   make ONE `write_stdin` call on that cell with empty `chars` and a
+   `yield_time_ms` at the ceiling. Note the ceiling: in code mode a single wait
+   is bounded by the OUTER code-mode cell yield, whose default is
+   `default_exec_yield_time_ms` (~30 000 ms) — NOT by
+   `background_terminal_max_timeout`, which separately bounds the inner terminal
+   read and does not lengthen the outer cell. Raise the per-call hold by setting
+   `[features.code_mode] default_exec_yield_time_ms` (e.g. 60000) in the profile;
+   that value survives compaction where a per-call `@exec` pragma does not. A
+   following `functions.wait` on a code-cell carries its own requested value.
+   Repeat the one call only while the cell is still running. Do not rely on a
+   built-in awaiter agent — its role registration is not available in current
+   Codex. Verify the effective per-call maximum on the host.
 2. **Claude Code.** Run the helper as a background Bash task
    (`run_in_background: true`) with `--chunk 0`; the agent is re-invoked when
    the sleep completes.

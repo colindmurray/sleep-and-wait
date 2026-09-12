@@ -62,7 +62,7 @@ date_iso() {
 cheap_wait_hint() {
   local secs="$1"
   local ms=$(( secs * 1000 + 5000 ))
-  echo "sleep-and-wait: wait cheaply — Codex: one write_stdin(chars:\"\", yield_time_ms:${ms}) on this cell, repeated once only if it is still running (ceiling: background_terminal_max_timeout, default 300000; set 3600000 for one-call waits); Claude Code: background task, act on re-invocation; other harnesses: foreground chunks. One wait call per interval."
+  echo "sleep-and-wait: wait cheaply — Codex code mode: for a parked graph prefer native clock.sleep (one call, up to 12h); to wait on this cell, one write_stdin(chars:\"\", yield_time_ms:${ms}), repeated only while it runs. The single-wait ceiling is the outer cell's default_exec_yield_time_ms (~30000; raise it in the profile), NOT background_terminal_max_timeout. Claude Code: background task, act on re-invocation; other harnesses: foreground chunks. One wait call per interval."
 }
 
 # Cancellable sleep: background `sleep`, wait on it, kill the child on signal.
