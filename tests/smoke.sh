@@ -9,7 +9,7 @@ check() { # name expected_rc actual_rc
 }
 out=$(bash "$s" 1 2>&1); check "1s full sleep" 0 $?
 grep -q 'sleeping 1s until' <<<"$out" || { echo "FAIL wake-time line missing"; fail=1; }
-grep -q 'wait cheaply — Codex: one write_stdin(chars:"", yield_time_ms:6000)' <<<"$out" || { echo "FAIL cheap-wait hint missing or wrong ms"; echo "$out"; fail=1; }
+grep -q 'wait cheaply — Codex code mode' <<<"$out" && grep -q 'one write_stdin(chars:"", yield_time_ms:6000)' <<<"$out" || { echo "FAIL cheap-wait hint missing or wrong ms"; echo "$out"; fail=1; }
 grep -q 'One wait call per interval' <<<"$out" || { echo "FAIL hint tail missing"; fail=1; }
 out=$(bash "$s" 3 --chunk 1 2>&1); check "chunk done, more remains" 3 $?
 grep -q 'yield_time_ms:6000' <<<"$out" || { echo "FAIL chunk hint should use the chunk length (1s -> 6000 ms)"; echo "$out"; fail=1; }
